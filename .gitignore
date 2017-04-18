@@ -1,0 +1,16 @@
+# Compiled files
+*.class
+/build
+/dist
+/target
+/examples/target
+
+# JUnit output
+/TEST*.xml
+
+# Emacs temp files
+*~
+
+# NetBeans files
+/nbactions.xml
+/hs*.log
