@@ -30,7 +30,8 @@ public class NuvlWorldApp {
    */
   public static void main (String args[])
   {
-    NuvlWorldPreferences preferences = new NuvlWorldPreferences("Jefft0");
+    NuvlWorldPreferences preferences = new NuvlWorldPreferences("nuvl:jefft0");
+    NuvlWorldStore store = new NuvlWorldStore();
 
     try {
       NuvlCalendarFrame frame = new NuvlCalendarFrame();
