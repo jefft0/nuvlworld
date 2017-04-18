@@ -1,0 +1,3 @@
+[submodule "submodules/nuvl"]
+	path = submodules/nuvl
+	url = https://github.com/jefft0/nuvl
