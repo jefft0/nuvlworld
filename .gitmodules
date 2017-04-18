@@ -1,3 +1,6 @@
 [submodule "submodules/nuvl"]
 	path = submodules/nuvl
 	url = https://github.com/jefft0/nuvl
+[submodule "submodules/umbel"]
+	path = submodules/umbel
+	url = https://github.com/structureddynamics/umbel
