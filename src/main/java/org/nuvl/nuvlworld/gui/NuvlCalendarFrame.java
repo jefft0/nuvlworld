@@ -15,6 +15,28 @@ limitations under the License.
  */
 package org.nuvl.nuvlworld.gui;
 
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Properties;
+import javax.swing.BorderFactory;
+import javax.swing.DefaultListModel;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import org.jdatepicker.impl.JDatePanelImpl;
+import org.jdatepicker.impl.UtilCalendarModel;
+import org.nuvl.nuvlworld.NuvlWorldPreferences;
+import org.nuvl.nuvlworld.NuvlWorldStore;
+import org.nuvl.nuvlworld.NuvlWorldStore.EventTimeInterval;
+
 /**
  *
  * @author Jeff Thompson, jeff@thefirst.org
@@ -24,9 +46,34 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
   /**
    * Creates new form NuvlCalendarFrame
    */
-  public NuvlCalendarFrame()
+  public NuvlCalendarFrame
+    (NuvlWorldStore store, NuvlWorldPreferences preferences)
   {
+    super("Calendar");
+    preferences_ = preferences;
+    store_ = store;
+
     initComponents();
+
+
+    // Set up the datePanel_.
+    Calendar calendar = Calendar.getInstance(preferences_.getTimeZone());
+    calendar.clear();
+    // Calendar object: months start at 0.
+    calendar.set
+      (selectedDate_.getYear(), selectedDate_.getMonthValue() - 1,
+       selectedDate_.getDayOfMonth());
+    UtilCalendarModel model = new UtilCalendarModel(calendar);
+    Properties p = new Properties();
+    p.put("text.today", "Today");
+    p.put("text.month", "Month");
+    p.put("text.year", "Year");
+    datePanel_ = new JDatePanelImpl(model, p);
+    datePanel_.setLocation(0, 0);
+    datePanel_.setSize(190, 170);
+    // This is a hack to change the month label background from the unreadable dark blue.
+    ((Container)datePanel_.getComponents()[0]).getComponents()[0].setBackground
+      (new Color(200, 200, 255));
   }
 
   /**
@@ -39,17 +86,103 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
   private void initComponents()
   {
 
+    topHorizontalSplitPane_ = new javax.swing.JSplitPane();
+    calendarControlsPanel_ = new javax.swing.JPanel();
+    eventsAndCalendarVerticalSplitPane_ = new javax.swing.JSplitPane();
+    calendarPanel_ = new javax.swing.JPanel();
+    daysPanel_ = new javax.swing.JPanel();
+    decrementButton_ = new javax.swing.JButton();
+    todayButton_ = new javax.swing.JButton();
+    incrementButton_ = new javax.swing.JButton();
+    daysPanelLabel_ = new javax.swing.JLabel();
+    eventsScrollPane_ = new javax.swing.JScrollPane();
+
     setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+    setTitle("Nuvl Calendar");
+
+    topHorizontalSplitPane_.setDividerLocation(190);
+
+    javax.swing.GroupLayout calendarControlsPanel_Layout = new javax.swing.GroupLayout(calendarControlsPanel_);
+    calendarControlsPanel_.setLayout(calendarControlsPanel_Layout);
+    calendarControlsPanel_Layout.setHorizontalGroup(
+      calendarControlsPanel_Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+      .addGap(0, 189, Short.MAX_VALUE)
+    );
+    calendarControlsPanel_Layout.setVerticalGroup(
+      calendarControlsPanel_Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+      .addGap(0, 508, Short.MAX_VALUE)
+    );
+
+    topHorizontalSplitPane_.setLeftComponent(calendarControlsPanel_);
+
+    eventsAndCalendarVerticalSplitPane_.setDividerLocation(50);
+    eventsAndCalendarVerticalSplitPane_.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
+
+    javax.swing.GroupLayout daysPanel_Layout = new javax.swing.GroupLayout(daysPanel_);
+    daysPanel_.setLayout(daysPanel_Layout);
+    daysPanel_Layout.setHorizontalGroup(
+      daysPanel_Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+      .addGap(0, 0, Short.MAX_VALUE)
+    );
+    daysPanel_Layout.setVerticalGroup(
+      daysPanel_Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+      .addGap(0, 315, Short.MAX_VALUE)
+    );
+
+    decrementButton_.setText("<");
+
+    todayButton_.setText("Today");
+
+    incrementButton_.setText(">");
+
+    daysPanelLabel_.setFont(new java.awt.Font("Dialog", 0, 14)); // NOI18N
+    daysPanelLabel_.setText("September 2017");
+
+    javax.swing.GroupLayout calendarPanel_Layout = new javax.swing.GroupLayout(calendarPanel_);
+    calendarPanel_.setLayout(calendarPanel_Layout);
+    calendarPanel_Layout.setHorizontalGroup(
+      calendarPanel_Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+      .addComponent(daysPanel_, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+      .addGroup(calendarPanel_Layout.createSequentialGroup()
+        .addGap(5, 5, 5)
+        .addComponent(decrementButton_)
+        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+        .addComponent(todayButton_)
+        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+        .addComponent(incrementButton_)
+        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+        .addComponent(daysPanelLabel_)
+        .addContainerGap(174, Short.MAX_VALUE))
+    );
+    calendarPanel_Layout.setVerticalGroup(
+      calendarPanel_Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+      .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, calendarPanel_Layout.createSequentialGroup()
+        .addGap(5, 5, 5)
+        .addGroup(calendarPanel_Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+          .addComponent(decrementButton_)
+          .addComponent(todayButton_)
+          .addComponent(incrementButton_)
+          .addComponent(daysPanelLabel_))
+        .addGap(25, 25, 25)
+        .addComponent(daysPanel_, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+    );
+
+    eventsAndCalendarVerticalSplitPane_.setBottomComponent(calendarPanel_);
+
+    eventsScrollPane_.setBorder(null);
+    eventsAndCalendarVerticalSplitPane_.setLeftComponent(eventsScrollPane_);
+
+    topHorizontalSplitPane_.setRightComponent(eventsAndCalendarVerticalSplitPane_);
 
     javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
     getContentPane().setLayout(layout);
     layout.setHorizontalGroup(
       layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-      .addGap(0, 400, Short.MAX_VALUE)
+      .addComponent(topHorizontalSplitPane_, javax.swing.GroupLayout.DEFAULT_SIZE, 688, Short.MAX_VALUE)
     );
     layout.setVerticalGroup(
       layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-      .addGap(0, 300, Short.MAX_VALUE)
+      .addComponent(topHorizontalSplitPane_)
     );
 
     pack();
@@ -87,11 +220,147 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     java.awt.EventQueue.invokeLater(new Runnable() {
       public void run()
       {
-        new NuvlCalendarFrame().setVisible(true);
+        new NuvlCalendarFrame(null, new NuvlWorldPreferences("")).setVisible(true);
       }
     });
   }
 
   // Variables declaration - do not modify//GEN-BEGIN:variables
+  private javax.swing.JPanel calendarControlsPanel_;
+  private javax.swing.JPanel calendarPanel_;
+  private javax.swing.JLabel daysPanelLabel_;
+  private javax.swing.JPanel daysPanel_;
+  private javax.swing.JButton decrementButton_;
+  private javax.swing.JSplitPane eventsAndCalendarVerticalSplitPane_;
+  private javax.swing.JScrollPane eventsScrollPane_;
+  private javax.swing.JButton incrementButton_;
+  private javax.swing.JButton todayButton_;
+  private javax.swing.JSplitPane topHorizontalSplitPane_;
   // End of variables declaration//GEN-END:variables
+  private final NuvlWorldStore store_;
+  private final NuvlWorldPreferences preferences_;
+  private final DefaultListModel<String> eventsListModel_ = new DefaultListModel<>();
+  private final ArrayList<ArrayList<DayPanel>> daysPanelGrid_ = new ArrayList();
+  private final ArrayList<JLabel> daysPanelHeaders_ = new ArrayList();
+  private LocalDate selectedDate_ = LocalDate.now();
+  private LocalDate daysPanelPreviousDate_ = LocalDate.of(1900, 1, 1);
+  private int nWeekRows_ = 0;
+  private final JDatePanelImpl datePanel_;
+  private static final DateTimeFormatter monthAndDayFormatter_ =
+    DateTimeFormatter.ofPattern("MMM d");
+  private static final DateTimeFormatter monthAndYearFormatter_ =
+    DateTimeFormatter.ofPattern("MMMM y");
+  private static final DateTimeFormatter dayOfWeekFormatter_ =
+    DateTimeFormatter.ofPattern("EEEE");
+}
+
+/**
+ * A DayPanel holds the main panel for a day plus its contained components.
+ */
+class DayPanel {
+  public DayPanel(JPopupMenu popupMenu)
+  {
+    panel_.setBorder(BorderFactory.createLineBorder(BORDER_COLOR));
+    panel_.setComponentPopupMenu(popupMenu);
+
+    final int labelHeight = 20;
+    dayLabel_.setForeground(new Color(100, 100, 100));
+    dayLabel_.setLocation(0, 0);
+    dayLabel_.setSize(50, labelHeight);
+    panel_.add(dayLabel_);
+
+    scrollPane_.setBorder(BorderFactory.createEmptyBorder());
+    scrollPane_.setViewportView(entries_);
+    scrollPane_.setLocation(0, dayLabel_.getLocation().y + labelHeight);
+    scrollPane_.getViewport().setInheritsPopupMenu(true);
+    panel_.add(scrollPane_);
+
+    setChildrenInheritsPopupMenu(panel_, true);
+  }
+
+  /**
+   * Recursively call setInheritsPopupMenu(value) on all children of component.
+   */
+  public static void
+  setChildrenInheritsPopupMenu(JComponent component, boolean value)
+  {
+    for (Component child : component.getComponents()) {
+      if (child instanceof JComponent) {
+        JComponent jChild = (JComponent)child;
+        ((JComponent) child).setInheritsPopupMenu(value);
+
+        setChildrenInheritsPopupMenu(jChild, value);
+      }
+    }
+  }
+
+  public static class Entry implements Comparable<Entry> {
+    public Entry(EventTimeInterval timeInterval, String label)
+    {
+      this.timeInterval = timeInterval;
+      this.label = label;
+
+      if (label.startsWith("<-> "))
+        labelRank = 1;
+      else if (label.startsWith("> "))
+        labelRank = 2;
+      else
+        labelRank = 3;
+    }
+
+    // Define toString for display.
+    @Override
+    public String toString() { return label; }
+
+    // Choose the compare order for display.
+    @Override
+    public int compareTo(Entry other)
+    {
+      if (other == this)
+        return 0;
+
+      int rankComparison = Integer.compare(labelRank, other.labelRank);
+      if (rankComparison != 0)
+        return rankComparison;
+
+      if (label.startsWith("<-> "))
+        return label.compareTo(other.label);
+      else if (label.startsWith("> "))
+        return Long.compare(timeInterval.endUtcMillis, other.timeInterval.endUtcMillis);
+      else
+        return Long.compare(timeInterval.startUtcMillis, other.timeInterval.startUtcMillis);
+    }
+
+    public final EventTimeInterval timeInterval;
+    public final String label;
+    private final int labelRank;
+  }
+
+  public void addTo(Container container) { container.add(panel_); }
+
+  public void setVisible(boolean visible) { panel_.setVisible(visible); }
+
+  public void
+  setSize(int width, int height)
+  {
+    panel_.setSize(width, height);
+    scrollPane_.setSize
+      (width - 1,
+       height - 1 - (dayLabel_.getLocation().y + dayLabel_.getSize().height));
+  }
+
+  public void
+  setLocation(int x, int y) { panel_.setLocation(x, y); }
+
+  public void
+  setDayText(String text) { dayLabel_.setText(text); }
+
+  public void
+  setEntries(Entry[] entries) { entries_.setListData(entries); }
+
+  public static final Color BORDER_COLOR = new Color(200, 200, 200);
+  private final JPanel panel_ = new JPanel(null);
+  private final JLabel dayLabel_ = new JLabel();
+  private final JScrollPane scrollPane_ = new JScrollPane();
+  private final JList<Entry> entries_ = new JList<>();
 }
