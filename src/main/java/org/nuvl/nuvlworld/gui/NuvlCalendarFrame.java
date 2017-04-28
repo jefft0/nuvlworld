@@ -323,6 +323,14 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     eventsAndCalendarVerticalSplitPane_.setDividerLocation(100);
     eventsAndCalendarVerticalSplitPane_.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
 
+    calendarPanel_.addComponentListener(new java.awt.event.ComponentAdapter()
+    {
+      public void componentResized(java.awt.event.ComponentEvent evt)
+      {
+        calendarPanel_ComponentResized(evt);
+      }
+    });
+
     daysPanel_.addComponentListener(new java.awt.event.ComponentAdapter()
     {
       public void componentResized(java.awt.event.ComponentEvent evt)
@@ -339,7 +347,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     );
     daysPanel_Layout.setVerticalGroup(
       daysPanel_Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-      .addGap(0, 315, Short.MAX_VALUE)
+      .addGap(0, 523, Short.MAX_VALUE)
     );
 
     decrementButton_.setText("<");
@@ -423,8 +431,6 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
       .addComponent(topHorizontalSplitPane_)
     );
 
-    getAccessibleContext().setAccessibleName("Calendar - Nuvl");
-
     pack();
   }// </editor-fold>//GEN-END:initComponents
 
@@ -483,6 +489,13 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     selectedDate_ = LocalDate.now();
     setUpDaysPanel();
   }//GEN-LAST:event_todayButton_ActionPerformed
+
+  private void calendarPanel_ComponentResized(java.awt.event.ComponentEvent evt)//GEN-FIRST:event_calendarPanel_ComponentResized
+  {//GEN-HEADEREND:event_calendarPanel_ComponentResized
+    daysPanel_.setSize
+      (calendarPanel_.getSize().width,
+       calendarPanel_.getSize().height - daysPanel_.getLocation().y);
+  }//GEN-LAST:event_calendarPanel_ComponentResized
 
   /**
    * @param args the command line arguments
