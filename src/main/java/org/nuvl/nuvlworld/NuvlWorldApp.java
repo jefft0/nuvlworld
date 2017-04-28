@@ -16,6 +16,7 @@ limitations under the License.
 
 package org.nuvl.nuvlworld;
 
+import java.io.File;
 import java.io.IOException;
 import org.nuvl.nuvlworld.gui.NuvlCalendarFrame;
 
@@ -31,9 +32,15 @@ public class NuvlWorldApp {
    */
   public static void main (String args[]) throws IOException
   {
-    NuvlWorldPreferences preferences = new NuvlWorldPreferences("nuvl:jefft0");
+    NuvlWorldPreferences preferences = new NuvlWorldPreferences("Jefft0");
     NuvlWorldStore store = new NuvlWorldStore();
-    store.loadSchemeFile("/home/jeff/wikidata/jefft0.scm");
+
+    String wikidataDir = "/home/jeff/wikidata";
+    store.loadSchemeFile(new File(wikidataDir, "locationIanaTimeZone.scm").getAbsolutePath());
+    store.loadSchemeFile(new File(wikidataDir, "iataAirportCode.scm").getAbsolutePath());
+    store.loadSchemeFile(new File(wikidataDir, "ianaTimeZoneInstanceOf.scm").getAbsolutePath());
+    store.loadSchemeFile(new File(wikidataDir, "itemDescription.scm").getAbsolutePath());
+    store.loadSchemeFile(new File(wikidataDir, "jefft0.scm").getAbsolutePath());
 
     try {
       NuvlCalendarFrame frame = new NuvlCalendarFrame(store, preferences);
