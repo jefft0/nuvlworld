@@ -16,6 +16,7 @@ limitations under the License.
 
 package org.nuvl.nuvlworld;
 
+import java.io.IOException;
 import org.nuvl.nuvlworld.gui.NuvlCalendarFrame;
 
 /**
@@ -28,13 +29,14 @@ public class NuvlWorldApp {
    * This the main entry for the application.
    * @param args The command line arguments.
    */
-  public static void main (String args[])
+  public static void main (String args[]) throws IOException
   {
     NuvlWorldPreferences preferences = new NuvlWorldPreferences("nuvl:jefft0");
     NuvlWorldStore store = new NuvlWorldStore();
+    store.loadSchemeFile("/home/jeff/wikidata/jefft0.scm");
 
     try {
-      NuvlCalendarFrame frame = new NuvlCalendarFrame();
+      NuvlCalendarFrame frame = new NuvlCalendarFrame(store, preferences);
       frame.pack();
       frame.setVisible(true);
     } catch (Exception ex) {
