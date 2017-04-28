@@ -496,6 +496,10 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
 
   private void calendarPanel_ComponentResized(java.awt.event.ComponentEvent evt)//GEN-FIRST:event_calendarPanel_ComponentResized
   {//GEN-HEADEREND:event_calendarPanel_ComponentResized
+    if (!isVisible())
+      // Only resize after the form is laid out.
+      return;
+
     daysPanel_.setSize
       (calendarPanel_.getSize().width,
        calendarPanel_.getSize().height - daysPanel_.getLocation().y);
