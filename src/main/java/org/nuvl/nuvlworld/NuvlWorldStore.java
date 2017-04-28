@@ -45,7 +45,8 @@ public class NuvlWorldStore {
 
   /**
    * Read filePath as a list of Scheme triples where the first term is the
-   * predicate, and add to sentencesByPredicate_.
+   * predicate, and add to sentencesByPredicate_. Also, if the predicate is
+   * description, then add to descriptions_.
    * @param filePath The Scheme file to read.
    */
   public void
@@ -68,8 +69,13 @@ public class NuvlWorldStore {
             predicate = matcher.group(1);
           else {
             matcher = stringPattern_.matcher(line);
-            if (matcher.find())
+            if (matcher.find()) {
               predicate = matcher.group(1);
+              
+              if (predicate.equals("description"))
+                // TODO: Check for decoding error.
+                descriptions_.put(matcher.group(2), removeQuotes(matcher.group(3)));
+            }
             else
               throw new Error("Unrecognized Scheme pattern: " + line);
           }
@@ -242,6 +248,8 @@ public class NuvlWorldStore {
 
   /** key: predicate, value: set of Sentence. */
   public final Map<String, Set<Sentence>> sentencesByPredicate_ = new HashMap<>();
+  /** key: term, value: the description string (unescaped). */
+  public final Map<String, String> descriptions_ = new HashMap<>();
   public static final Pattern termPattern_ = Pattern.compile
     ("^\\(([a-zA-Z_]\\w*) ([a-zA-Z_]\\w*) ([a-zA-Z_]\\w*)\\)$");
   public static final Pattern integerPattern_ = Pattern.compile
