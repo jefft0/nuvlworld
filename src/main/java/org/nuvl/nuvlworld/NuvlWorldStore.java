@@ -23,7 +23,9 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -89,7 +91,8 @@ public class NuvlWorldStore {
                   // Don't add extraneous descriptions, to save memory.
                   continue;
 
-                descriptions_.put(matcher.group(2), removeQuotes(matcher.group(3)));
+                descriptions_.put
+                  (matcher.group(2), fromEscapedString(matcher.group(3)));
                 // Don't add to sentencesByPredicate_, etc.
                 continue;
               }
@@ -235,9 +238,11 @@ public class NuvlWorldStore {
    * @return The regex Matcher object or null if not found.
    */
   public Matcher
-  findFirst(String predicate, Pattern pattern, int groupNumber, String group)
+  findFirstByPredicate
+    (String predicate, Pattern pattern, int groupNumber, String group)
   {
-    for (Sentence sentence : sentencesByPredicate_.getOrDefault(predicate, emptySentences_)) {
+    for (Sentence sentence : sentencesByPredicate_.getOrDefault
+         (predicate, emptySentences_)) {
       Matcher matcher = pattern.matcher(sentence.symbol());
       if (matcher.find() && matcher.group(groupNumber).equals(group)) {
         return matcher;
@@ -262,13 +267,40 @@ public class NuvlWorldStore {
   }
 
   /**
+   * Use the timeZone to convert the date and time to UTC millis.
+   * @param timeZone The TimeZone object.
+   * @param date The date. This ignores the hour/minute/second and time zone
+   * fields.
+   * @param time The time.
+   * @return The milliseconds since January 1, 1970 UTC.
+   */
+  public static long
+  toUtcMillis(TimeZone timeZone, Date date, LocalTime time)
+  {
+    Calendar calendar = Calendar.getInstance(timeZone);
+    calendar.clear();
+    calendar.set
+      (1900 + date.getYear(), date.getMonth(), date.getDate(),
+       time.getHour(), time.getMinute(), time.getSecond());
+    return calendar.getTimeInMillis();
+  }
+
+  /**
    * Assume s is a JSON string with begin and end quotes, so remove them and
    * unescape.
-   * @param s The quoted string.
+   * @param s The JSON string.
    * @return The unescaped result without quotes.
    */
   public static String
-  removeQuotes(String s) { return gson_.fromJson(s, String.class); }
+  fromEscapedString(String s) { return gson_.fromJson(s, String.class); }
+
+  /**
+   * Convert s to the escaped JSON string including begin and end quotes.
+   * @param s The string to convert to JSON.
+   * @return The unescaped result without quotes.
+   */
+  public static String
+  toEscapedString(String s) { return gson_.toJson(s); }
 
   /** key: predicate, value: set of Sentence. */
   public final Map<String, Set<Sentence>> sentencesByPredicate_ = new HashMap<>();
