@@ -45,8 +45,9 @@ public class NuvlWorldStore {
 
   /**
    * Read filePath as a list of Scheme triples where the first term is the
-   * predicate, and add to sentencesByPredicate_. Also, if the predicate is
-   * description, then add to descriptions_.
+   * predicate, and add to sentencesByPredicate_ and sentencesBySubject_.
+   * However, if the predicate is "description", then only add to descriptions_
+   * if the  subject is already in sentencesBySubject_.
    * @param filePath The Scheme file to read.
    */
   public void
@@ -54,37 +55,60 @@ public class NuvlWorldStore {
   {
     try (FileReader file = new FileReader(filePath);
             BufferedReader reader = new BufferedReader(file)) {
+    int nLines = 0;
       String line;
       while ((line = reader.readLine()) != null) {
+        ++nLines;
+        if (nLines % 1000000 == 0)
+          System.out.println("Loading " + filePath + ", line " + nLines);
+
         if (line.equals("") || line.startsWith(";"))
           continue;
 
         String predicate;
+        String subject;
         Matcher matcher = termPattern_.matcher(line);
-        if (matcher.find())
+        if (matcher.find()) {
           predicate = matcher.group(1);
+          subject = matcher.group(2);
+        }
         else {
           matcher = integerPattern_.matcher(line);
-          if (matcher.find())
+          if (matcher.find()) {
             predicate = matcher.group(1);
+            subject = matcher.group(2);
+          }
           else {
             matcher = stringPattern_.matcher(line);
             if (matcher.find()) {
               predicate = matcher.group(1);
+              subject = matcher.group(2);
               
-              if (predicate.equals("description"))
-                // TODO: Check for decoding error.
+              if (predicate.equals("description")) {
+                if (!sentencesBySubject_.containsKey(subject))
+                  // Don't add extraneous descriptions, to save memory.
+                  continue;
+
                 descriptions_.put(matcher.group(2), removeQuotes(matcher.group(3)));
+                // Don't add to sentencesByPredicate_, etc.
+                continue;
+              }
             }
             else
               throw new Error("Unrecognized Scheme pattern: " + line);
           }
         }
 
+        Sentence sentence = new Sentence(line, false);
         Set<Sentence> sentenceSet = sentencesByPredicate_.get(predicate);
         if (sentenceSet == null)
           sentencesByPredicate_.put(predicate, (sentenceSet = new HashSet()));
-        sentenceSet.add(new Sentence(line, false));
+        sentenceSet.add(sentence);
+
+        sentenceSet = sentencesBySubject_.get(subject);
+        if (sentenceSet == null)
+          sentencesBySubject_.put(subject, (sentenceSet = new HashSet()));
+        sentenceSet.add(sentence);
       }
     }
   }
@@ -248,14 +272,16 @@ public class NuvlWorldStore {
 
   /** key: predicate, value: set of Sentence. */
   public final Map<String, Set<Sentence>> sentencesByPredicate_ = new HashMap<>();
-  /** key: term, value: the description string (unescaped). */
+  /** key: arg2, value: set of Sentence. */
+  public final Map<String, Set<Sentence>> sentencesBySubject_ = new HashMap<>();
+  /** key: subject, value: the description string (unescaped). */
   public final Map<String, String> descriptions_ = new HashMap<>();
   public static final Pattern termPattern_ = Pattern.compile
     ("^\\(([a-zA-Z_]\\w*) ([a-zA-Z_]\\w*) ([a-zA-Z_]\\w*)\\)$");
   public static final Pattern integerPattern_ = Pattern.compile
     ("^\\(([a-zA-Z_]\\w*) ([a-zA-Z_]\\w*) (-?\\d+)\\)$");
   public static final Pattern stringPattern_ = Pattern.compile
-    ("^\\(([a-zA-Z_]\\w*) ([a-zA-Z_]\\w*) (\".+\")\\)$");
+    ("^\\(([a-zA-Z_]\\w*) ([a-zA-Z_]\\w*) (\".*\")\\)$");
 
   private TimeZone overlapsDateTimeZone_ = null;
   private final Map<LocalDate, Set<EventTimeInterval>> overlapsDate_ = new HashMap<>();
