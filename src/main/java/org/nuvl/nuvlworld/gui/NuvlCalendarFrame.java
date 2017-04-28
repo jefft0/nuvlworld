@@ -209,10 +209,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
             // TODO: Check that event is a event in the argument set.
             String event = timeInterval.event;
 
-            Matcher labelMatcher = store_.findFirst
-              ("description", NuvlWorldStore.stringPattern_, 2, event);
-            String label = labelMatcher == null ? "unnamed"
-              : NuvlWorldStore.removeQuotes(labelMatcher.group(3));
+            String title = store_.descriptions_.getOrDefault(event, "untitled");
 
             calendar.clear();
             calendar.setTimeInMillis(timeInterval.startUtcMillis);
@@ -254,7 +251,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
             }
 
             panelEntries[entryCount++] = new DayPanel.Entry
-             (timeInterval, displayTime + label);
+             (timeInterval, displayTime + title);
           }
 
           // Sort according to DayPanel.Entry.compareTo.
@@ -300,6 +297,13 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     eventsList_ = new javax.swing.JList<>();
 
     newEventMenuItem_.setText("New Event...");
+    newEventMenuItem_.addActionListener(new java.awt.event.ActionListener()
+    {
+      public void actionPerformed(java.awt.event.ActionEvent evt)
+      {
+        newEventMenuItem_ActionPerformed(evt);
+      }
+    });
     dayPopupMenu_.add(newEventMenuItem_);
 
     setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -496,6 +500,12 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
       (calendarPanel_.getSize().width,
        calendarPanel_.getSize().height - daysPanel_.getLocation().y);
   }//GEN-LAST:event_calendarPanel_ComponentResized
+
+  private void newEventMenuItem_ActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_newEventMenuItem_ActionPerformed
+  {//GEN-HEADEREND:event_newEventMenuItem_ActionPerformed
+    new NewEventDialog
+      (this, store_, preferences_, selectedDate_).setVisible(true);
+  }//GEN-LAST:event_newEventMenuItem_ActionPerformed
 
   /**
    * @param args the command line arguments
