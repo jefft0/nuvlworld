@@ -39,8 +39,9 @@ public class NuvlWorldApp {
     store.loadSchemeFile(new File(wikidataDir, "locationIanaTimeZone.scm").getAbsolutePath());
     store.loadSchemeFile(new File(wikidataDir, "iataAirportCode.scm").getAbsolutePath());
     store.loadSchemeFile(new File(wikidataDir, "ianaTimeZoneInstanceOf.scm").getAbsolutePath());
-    store.loadSchemeFile(new File(wikidataDir, "itemDescription.scm").getAbsolutePath());
     store.loadSchemeFile(new File(wikidataDir, "jefft0.scm").getAbsolutePath());
+    store.loadWikidataDescriptions
+      (new File(wikidataDir, "itemEnLabel.tsv").getAbsolutePath());
 
     try {
       NuvlCalendarFrame frame = new NuvlCalendarFrame(store, preferences);
