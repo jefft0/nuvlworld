@@ -363,7 +363,6 @@ public class NewEventDialog extends javax.swing.JDialog {
       return null;
     }
     String locationIanaId = locationMatch.group(3);
-    System.out.println("Debug locationIanaId " + locationIanaId);
 
     String locationIanaLabel = store_.descriptions_.getOrDefault
       (locationIanaId, null);
