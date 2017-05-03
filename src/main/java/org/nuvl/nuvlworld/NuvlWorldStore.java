@@ -117,6 +117,37 @@ public class NuvlWorldStore {
   }
 
   /**
+   * Read filePath as a list of tab-separated values of ID and description,
+   * and add to descriptions_ where the subject is "Q" + ID. But to save memory,
+   * only add if the subject is already in sentencesBySubject_.
+   * @param filePath The TSV file to read.
+   */
+  public void
+  loadWikidataDescriptions(String filePath) throws FileNotFoundException, IOException
+  {
+    try (FileReader file = new FileReader(filePath);
+            BufferedReader reader = new BufferedReader(file)) {
+    int nLines = 0;
+      String line;
+      while ((line = reader.readLine()) != null) {
+        ++nLines;
+        if (nLines % 10000000 == 0)
+          System.out.println("Loading " + filePath + ", line " + nLines);
+
+        int tabIndex = line.indexOf('\t');
+        String subject = "Q" + line.substring(0, tabIndex);
+
+        if (!sentencesBySubject_.containsKey(subject))
+          // Don't add extraneous descriptions, to save memory.
+          continue;
+
+        descriptions_.put
+          (subject, fromEscapedString(line.substring(tabIndex + 1)));
+      }
+    }
+  }
+
+  /**
    * A EventTimeInterval holds an event term and the start and end times of a
    * time interval as milliseconds since the UTC Unix epoch.
    */
