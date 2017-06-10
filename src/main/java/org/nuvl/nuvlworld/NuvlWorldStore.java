@@ -176,7 +176,7 @@ public class NuvlWorldStore {
   /**
    * Use the day start and end times $DayStart and $DayEnd according to the
    * given timeZone and return a set of EventTimeInterval which satisfy:
-   * (AND (subAttr $Event (StartTimeFn $Start)) (subAttr $Event (EndTimeFn $End))
+   * (AND (subAttrOf $Event (StartTimeFn $Start)) (subAttrOf $Event (EndTimeFn $End))
    *      (lessThan $Start $DayEnd) (greaterThanOrEqual $End $DayBegin)) .
    *
    * @param date The date.
@@ -197,9 +197,9 @@ public class NuvlWorldStore {
       // Set up overlapsDate_.
       Calendar calendar = Calendar.getInstance(timeZone);
       Pattern startTimePattern = Pattern.compile
-        ("^\\(subAttr (" + TERM + ") \\(StartTimeFn (" + INT + ")\\)\\)$");
+        ("^\\(subAttrOf (" + TERM + ") \\(StartTimeFn (" + INT + ")\\)\\)$");
       Pattern endTimePattern = Pattern.compile
-        ("^\\(subAttr (" + TERM + ") \\(EndTimeFn (" + INT + ")\\)\\)$");
+        ("^\\(subAttrOf (" + TERM + ") \\(EndTimeFn (" + INT + ")\\)\\)$");
 
       overlapsDate_.clear();
       overlapsDateTimeZone_ = timeZone;
@@ -207,14 +207,14 @@ public class NuvlWorldStore {
       // First get all the start times.
       Map<String, Long> startTimes = new HashMap<>();
       for (Sentence sentence : sentencesByPredicate_.getOrDefault
-        ("subAttr", emptySentences_)) {
+        ("subAttrOf", emptySentences_)) {
         Matcher matcher = startTimePattern.matcher(sentence.symbol());
         if (matcher.find())
           startTimes.put(matcher.group(1), Long.parseLong(matcher.group(2)));
       }
 
       for (Sentence sentence : sentencesByPredicate_.getOrDefault
-           ("subAttr", emptySentences_)) {
+           ("subAttrOf", emptySentences_)) {
         Matcher matcher = endTimePattern.matcher(sentence.symbol());
         if (!matcher.find())
           continue;
