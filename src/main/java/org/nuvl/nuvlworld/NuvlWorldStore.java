@@ -176,7 +176,7 @@ public class NuvlWorldStore {
   /**
    * Use the day start and end times $DayStart and $DayEnd according to the
    * given timeZone and return a set of EventTimeInterval which satisfy:
-   * (AND (startTime $Event $Start) (endTime $Event $End)
+   * (AND (subAttr $Event (StartTimeFn $Start)) (subAttr $Event (EndTimeFn $End))
    *      (lessThan $Start $DayEnd) (greaterThanOrEqual $End $DayBegin)) .
    *
    * @param date The date.
@@ -186,7 +186,7 @@ public class NuvlWorldStore {
    * maintain results for different timeZone values, but we want to save
    * memory.)
    * @return A set of EventTimeInterval which match the query above (possibly
-   * empty) with ?PHYSICAL plus ?BEGIN ?END as milliseconds since the Unix
+   * empty) with $Event plus $Start $End as milliseconds since the Unix
    * epoch.
    */
   public Set<EventTimeInterval>
@@ -196,31 +196,35 @@ public class NuvlWorldStore {
       // TODO: Check if sentences_ has changed.
       // Set up overlapsDate_.
       Calendar calendar = Calendar.getInstance(timeZone);
+      Pattern startTimePattern = Pattern.compile
+        ("^\\(subAttr (" + TERM + ") \\(StartTimeFn (" + INT + ")\\)\\)$");
+      Pattern endTimePattern = Pattern.compile
+        ("^\\(subAttr (" + TERM + ") \\(EndTimeFn (" + INT + ")\\)\\)$");
 
       overlapsDate_.clear();
       overlapsDateTimeZone_ = timeZone;
 
-      // First get all the start times.efms
+      // First get all the start times.
       Map<String, Long> startTimes = new HashMap<>();
       for (Sentence sentence : sentencesByPredicate_.getOrDefault
-        ("startTime", emptySentences_)) {
-        Matcher matcher = integerPattern_.matcher(sentence.symbol());
+        ("subAttr", emptySentences_)) {
+        Matcher matcher = startTimePattern.matcher(sentence.symbol());
         if (matcher.find())
-          startTimes.put(matcher.group(2), Long.parseLong(matcher.group(3)));
+          startTimes.put(matcher.group(1), Long.parseLong(matcher.group(2)));
       }
 
       for (Sentence sentence : sentencesByPredicate_.getOrDefault
-           ("endTime", emptySentences_)) {
-        Matcher matcher = integerPattern_.matcher(sentence.symbol());
+           ("subAttr", emptySentences_)) {
+        Matcher matcher = endTimePattern.matcher(sentence.symbol());
         if (!matcher.find())
           continue;
-        String event = matcher.group(2);
+        String event = matcher.group(1);
 
-        Long startTimeUtcMillisLong = startTimes.getOrDefault(event, null);
+        Long startTimeUtcMillisLong = startTimes.get(event);
         if (startTimeUtcMillisLong == null)
           continue;
         long startTimeUtcMillis = startTimeUtcMillisLong;
-        long endTimeUtcMillis = Long.parseLong(matcher.group(3));
+        long endTimeUtcMillis = Long.parseLong(matcher.group(2));
 
         // Find dates with dayStartUtcMillis and dayEndUtcMillis where
         // (startTimeUtcMillis < dayEndUtcMillis &&
@@ -246,8 +250,7 @@ public class NuvlWorldStore {
           (event, startTimeUtcMillis, endTimeUtcMillis);
         LocalDate key = startDate;
         while (true) {
-          Set<EventTimeInterval> timeIntervalSet = overlapsDate_.getOrDefault
-            (key, null);
+          Set<EventTimeInterval> timeIntervalSet = overlapsDate_.get(key);
           if (timeIntervalSet == null) {
             timeIntervalSet = new HashSet<>();
             overlapsDate_.put(key, timeIntervalSet);
@@ -348,7 +351,7 @@ public class NuvlWorldStore {
   public final Map<String, String> descriptions_ = new HashMap<>();
   public static final String TERM = "[a-zA-Z_]\\w*";
   public static final String INT = "-?\\d+";
-  public static final String UNARY_FN = 
+  public static final String UNARY_FN =
     "\\(" + TERM + "Fn (?:" + TERM + "|" + INT + ")\\)";
   public static final Pattern termPattern_ = Pattern.compile
     ("^\\((" + TERM + ") (" + TERM + ") " +
