@@ -196,35 +196,21 @@ public class NuvlWorldStore {
       // TODO: Check if sentences_ has changed.
       // Set up overlapsDate_.
       Calendar calendar = Calendar.getInstance(timeZone);
-      Pattern startTimePattern = Pattern.compile
-        ("^\\(subAttrOf (" + TERM + ") \\(StartTimeFn (" + INT + ")\\)\\)$");
-      Pattern endTimePattern = Pattern.compile
-        ("^\\(subAttrOf (" + TERM + ") \\(EndTimeFn (" + INT + ")\\)\\)$");
+      Pattern timePattern = Pattern.compile
+        ("^\\(subAttrOf (" + TERM + ") \\(TimeFn (" + INT + ") (" + INT + ")\\)\\)$");
 
       overlapsDate_.clear();
       overlapsDateTimeZone_ = timeZone;
 
-      // First get all the start times.
-      Map<String, Long> startTimes = new HashMap<>();
-      for (Sentence sentence : sentencesByPredicate_.getOrDefault
-        ("subAttrOf", emptySentences_)) {
-        Matcher matcher = startTimePattern.matcher(sentence.symbol());
-        if (matcher.find())
-          startTimes.put(matcher.group(1), Long.parseLong(matcher.group(2)));
-      }
-
       for (Sentence sentence : sentencesByPredicate_.getOrDefault
            ("subAttrOf", emptySentences_)) {
-        Matcher matcher = endTimePattern.matcher(sentence.symbol());
+        Matcher matcher = timePattern.matcher(sentence.symbol());
         if (!matcher.find())
           continue;
         String event = matcher.group(1);
 
-        Long startTimeUtcMillisLong = startTimes.get(event);
-        if (startTimeUtcMillisLong == null)
-          continue;
-        long startTimeUtcMillis = startTimeUtcMillisLong;
-        long endTimeUtcMillis = Long.parseLong(matcher.group(2));
+        long startTimeUtcMillis = Long.parseLong(matcher.group(2));
+        long endTimeUtcMillis = Long.parseLong(matcher.group(3));
 
         // Find dates with dayStartUtcMillis and dayEndUtcMillis where
         // (startTimeUtcMillis < dayEndUtcMillis &&
@@ -353,12 +339,14 @@ public class NuvlWorldStore {
   public static final String INT = "-?\\d+";
   public static final String UNARY_FN =
     "\\(" + TERM + "Fn (?:" + TERM + "|" + INT + ")\\)";
+  public static final String BINARY_FN =
+    "\\(" + TERM + "Fn (?:" + TERM + "|" + INT + ") (?:" + TERM + "|" + INT + ")\\)";
   public static final Pattern termPattern_ = Pattern.compile
     ("^\\((" + TERM + ") (" + TERM + ") " +
-     "(" + TERM + "|" + UNARY_FN + ")\\)$");
+     "(" + TERM + "|" + UNARY_FN + "|" + BINARY_FN + ")\\)$");
   public static final Pattern termPattern4_ = Pattern.compile
     ("^\\((" + TERM + ") (" + TERM + ") (" + TERM + ") " +
-     "(" + TERM + "|" + UNARY_FN + ")\\)$");
+     "(" + TERM + "|" + UNARY_FN + "|" + BINARY_FN + ")\\)$");
   public static final Pattern integerPattern_ = Pattern.compile
     ("^\\((" + TERM + ") (" + TERM + ") (" + INT + ")\\)$");
   public static final Pattern stringPattern_ = Pattern.compile
