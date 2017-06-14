@@ -176,7 +176,7 @@ public class NuvlWorldStore {
   /**
    * Use the day start and end times $DayStart and $DayEnd according to the
    * given timeZone and return a set of EventTimeInterval which satisfy:
-   * (AND (subAttrOf $Event (StartTimeFn $Start)) (subAttrOf $Event (EndTimeFn $End))
+   * (AND (subAttrOf $Event (TimeIntervalFn $Start $End))
    *      (lessThan $Start $DayEnd) (greaterThanOrEqual $End $DayBegin)) .
    *
    * @param date The date.
@@ -197,7 +197,8 @@ public class NuvlWorldStore {
       // Set up overlapsDate_.
       Calendar calendar = Calendar.getInstance(timeZone);
       Pattern timePattern = Pattern.compile
-        ("^\\(subAttrOf (" + TERM + ") \\(TimeFn (" + INT + ") (" + INT + ")\\)\\)$");
+        ("^\\(subAttrOf (" + TERM + ") \\(TimeIntervalFn (" + INT +
+         ") (" + INT + ")\\)\\)$");
 
       overlapsDate_.clear();
       overlapsDateTimeZone_ = timeZone;
