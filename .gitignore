@@ -7,6 +7,7 @@
 
 # JUnit output
 /TEST*.xml
+/temp*.lp
 
 # Emacs temp files
 *~
