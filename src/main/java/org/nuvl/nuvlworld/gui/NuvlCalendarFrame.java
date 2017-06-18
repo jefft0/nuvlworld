@@ -29,7 +29,6 @@ import java.util.Calendar;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
-import java.util.regex.Matcher;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JComponent;
@@ -38,6 +37,7 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.ListCellRenderer;
 import javax.swing.SwingConstants;
 import org.jdatepicker.impl.JDatePanelImpl;
 import org.jdatepicker.impl.UtilCalendarModel;
@@ -595,6 +595,7 @@ class DayPanel {
     dayLabel_.setSize(50, labelHeight);
     panel_.add(dayLabel_);
 
+    entries_.setCellRenderer(new EntryCellRenderer());
     scrollPane_.setBorder(BorderFactory.createEmptyBorder());
     scrollPane_.setViewportView(entries_);
     scrollPane_.setLocation(0, dayLabel_.getLocation().y + labelHeight);
@@ -660,6 +661,34 @@ class DayPanel {
     public final EventTimeInterval timeInterval;
     public final String label;
     private final int labelRank;
+  }
+
+  private static class EntryCellRenderer extends JLabel implements ListCellRenderer {
+    public EntryCellRenderer()
+    {
+      setOpaque(true);
+      //setIconTextGap(12);
+    }
+
+    public Component getListCellRendererComponent
+      (JList list, Object value, int index, boolean isSelected,
+       boolean cellHasFocus) {
+      Entry entry = (Entry) value;
+      setText(entry.toString());
+      //setIcon(entry.getIcon());
+      if (isSelected) {
+        setBackground(HIGHLIGHT_COLOR);
+        setForeground(Color.white);
+      }
+      else {
+        setBackground(Color.white);
+        setForeground(Color.black);
+      }
+
+      return this;
+    }
+
+    private static final Color HIGHLIGHT_COLOR = new Color(64, 64, 255);
   }
 
   public void addTo(Container container) { container.add(panel_); }
