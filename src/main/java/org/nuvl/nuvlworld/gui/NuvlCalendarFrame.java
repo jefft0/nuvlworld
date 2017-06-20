@@ -29,6 +29,7 @@ import java.util.Calendar;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
+import javafx.scene.control.SelectionMode;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JComponent;
@@ -38,7 +39,10 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.ListCellRenderer;
+import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import org.jdatepicker.impl.JDatePanelImpl;
 import org.jdatepicker.impl.UtilCalendarModel;
 import org.nuvl.nuvlworld.NuvlWorldPreferences;
@@ -70,7 +74,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
       daysPanelGrid_.add(week);
 
       for (int iDay = 0; iDay < 7; ++iDay) {
-        DayPanel dayPanel = new DayPanel(dayPopupMenu_);
+        DayPanel dayPanel = new DayPanel(this);
         week.add(dayPanel);
         dayPanel.addTo(daysPanel_);
       }
@@ -548,6 +552,153 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     });
   }
 
+  /**
+   * A DayPanel holds the main panel for a day plus its contained components.
+   */
+  private static class DayPanel implements ListSelectionListener {
+    public DayPanel(NuvlCalendarFrame parent)
+    {
+      panel_.setBorder(BorderFactory.createLineBorder(BORDER_COLOR));
+      panel_.setComponentPopupMenu(parent.dayPopupMenu_);
+
+      final int labelHeight = 20;
+      dayLabel_.setForeground(new Color(100, 100, 100));
+      dayLabel_.setLocation(0, 0);
+      dayLabel_.setSize(50, labelHeight);
+      panel_.add(dayLabel_);
+
+      entries_.setCellRenderer(new EntryCellRenderer());
+      entries_.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+      entries_.addListSelectionListener(this);
+
+      scrollPane_.setBorder(BorderFactory.createEmptyBorder());
+      scrollPane_.setViewportView(entries_);
+      scrollPane_.setLocation(0, dayLabel_.getLocation().y + labelHeight);
+      scrollPane_.getViewport().setInheritsPopupMenu(true);
+      panel_.add(scrollPane_);
+
+      setChildrenInheritsPopupMenu(panel_, true);
+    }
+
+    /**
+     * Recursively call setInheritsPopupMenu(value) on all children of component.
+     */
+    public static void
+    setChildrenInheritsPopupMenu(JComponent component, boolean value)
+    {
+      for (Component child : component.getComponents()) {
+        if (child instanceof JComponent) {
+          JComponent jChild = (JComponent)child;
+          ((JComponent) child).setInheritsPopupMenu(value);
+
+          setChildrenInheritsPopupMenu(jChild, value);
+        }
+      }
+    }
+
+    @Override
+    public void valueChanged(ListSelectionEvent e) {
+    }
+
+    public static class Entry implements Comparable<Entry> {
+      public Entry(EventTimeInterval timeInterval, String label)
+      {
+        this.timeInterval = timeInterval;
+        this.label = label;
+
+        if (label.startsWith("<-> "))
+          labelRank = 1;
+        else if (label.startsWith("> "))
+          labelRank = 2;
+        else
+          labelRank = 3;
+      }
+
+      // Define toString for display.
+      @Override
+      public String toString() { return label; }
+
+      // Choose the compare order for display.
+      @Override
+      public int compareTo(Entry other)
+      {
+        if (other == this)
+          return 0;
+
+        int rankComparison = Integer.compare(labelRank, other.labelRank);
+        if (rankComparison != 0)
+          return rankComparison;
+
+        if (label.startsWith("<-> "))
+          return label.compareTo(other.label);
+        else if (label.startsWith("> "))
+          return Long.compare(timeInterval.endUtcMillis, other.timeInterval.endUtcMillis);
+        else
+          return Long.compare(timeInterval.startUtcMillis, other.timeInterval.startUtcMillis);
+      }
+
+      public final EventTimeInterval timeInterval;
+      public final String label;
+      private final int labelRank;
+    }
+
+    private static class EntryCellRenderer extends JLabel implements ListCellRenderer {
+      public EntryCellRenderer()
+      {
+        setOpaque(true);
+        //setIconTextGap(12);
+      }
+
+      public Component getListCellRendererComponent
+        (JList list, Object value, int index, boolean isSelected,
+         boolean cellHasFocus) {
+        Entry entry = (Entry) value;
+        setText(entry.toString());
+        //setIcon(entry.getIcon());
+        if (isSelected) {
+          setBackground(HIGHLIGHT_COLOR);
+          setForeground(Color.white);
+        }
+        else {
+          setBackground(Color.white);
+          setForeground(Color.black);
+        }
+
+        return this;
+      }
+
+      private static final Color HIGHLIGHT_COLOR = new Color(64, 64, 255);
+    }
+
+    public void addTo(Container container) { container.add(panel_); }
+
+    public void setVisible(boolean visible) { panel_.setVisible(visible); }
+
+    public void
+    setSize(int width, int height)
+    {
+      panel_.setSize(width, height);
+      scrollPane_.setSize
+        (width - 1,
+         height - 1 - (dayLabel_.getLocation().y + dayLabel_.getSize().height));
+    }
+
+    public void
+    setLocation(int x, int y) { panel_.setLocation(x, y); }
+
+    public void
+    setDayText(String text) { dayLabel_.setText(text); }
+
+    public void
+    setEntries(Entry[] entries) { entries_.setListData(entries); }
+
+    public static final Color BORDER_COLOR = new Color(200, 200, 200);
+    private final JPanel panel_ = new JPanel(null);
+    private final JLabel dayLabel_ = new JLabel();
+    private final JScrollPane scrollPane_ = new JScrollPane();
+    private final JList<Entry> entries_ = new JList<>();
+  }
+
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JPanel calendarControlsPanel_;
   private javax.swing.JPanel calendarPanel_;
@@ -578,144 +729,4 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     DateTimeFormatter.ofPattern("MMMM y");
   private static final DateTimeFormatter dayOfWeekFormatter_ =
     DateTimeFormatter.ofPattern("EEEE");
-}
-
-/**
- * A DayPanel holds the main panel for a day plus its contained components.
- */
-class DayPanel {
-  public DayPanel(JPopupMenu popupMenu)
-  {
-    panel_.setBorder(BorderFactory.createLineBorder(BORDER_COLOR));
-    panel_.setComponentPopupMenu(popupMenu);
-
-    final int labelHeight = 20;
-    dayLabel_.setForeground(new Color(100, 100, 100));
-    dayLabel_.setLocation(0, 0);
-    dayLabel_.setSize(50, labelHeight);
-    panel_.add(dayLabel_);
-
-    entries_.setCellRenderer(new EntryCellRenderer());
-    scrollPane_.setBorder(BorderFactory.createEmptyBorder());
-    scrollPane_.setViewportView(entries_);
-    scrollPane_.setLocation(0, dayLabel_.getLocation().y + labelHeight);
-    scrollPane_.getViewport().setInheritsPopupMenu(true);
-    panel_.add(scrollPane_);
-
-    setChildrenInheritsPopupMenu(panel_, true);
-  }
-
-  /**
-   * Recursively call setInheritsPopupMenu(value) on all children of component.
-   */
-  public static void
-  setChildrenInheritsPopupMenu(JComponent component, boolean value)
-  {
-    for (Component child : component.getComponents()) {
-      if (child instanceof JComponent) {
-        JComponent jChild = (JComponent)child;
-        ((JComponent) child).setInheritsPopupMenu(value);
-
-        setChildrenInheritsPopupMenu(jChild, value);
-      }
-    }
-  }
-
-  public static class Entry implements Comparable<Entry> {
-    public Entry(EventTimeInterval timeInterval, String label)
-    {
-      this.timeInterval = timeInterval;
-      this.label = label;
-
-      if (label.startsWith("<-> "))
-        labelRank = 1;
-      else if (label.startsWith("> "))
-        labelRank = 2;
-      else
-        labelRank = 3;
-    }
-
-    // Define toString for display.
-    @Override
-    public String toString() { return label; }
-
-    // Choose the compare order for display.
-    @Override
-    public int compareTo(Entry other)
-    {
-      if (other == this)
-        return 0;
-
-      int rankComparison = Integer.compare(labelRank, other.labelRank);
-      if (rankComparison != 0)
-        return rankComparison;
-
-      if (label.startsWith("<-> "))
-        return label.compareTo(other.label);
-      else if (label.startsWith("> "))
-        return Long.compare(timeInterval.endUtcMillis, other.timeInterval.endUtcMillis);
-      else
-        return Long.compare(timeInterval.startUtcMillis, other.timeInterval.startUtcMillis);
-    }
-
-    public final EventTimeInterval timeInterval;
-    public final String label;
-    private final int labelRank;
-  }
-
-  private static class EntryCellRenderer extends JLabel implements ListCellRenderer {
-    public EntryCellRenderer()
-    {
-      setOpaque(true);
-      //setIconTextGap(12);
-    }
-
-    public Component getListCellRendererComponent
-      (JList list, Object value, int index, boolean isSelected,
-       boolean cellHasFocus) {
-      Entry entry = (Entry) value;
-      setText(entry.toString());
-      //setIcon(entry.getIcon());
-      if (isSelected) {
-        setBackground(HIGHLIGHT_COLOR);
-        setForeground(Color.white);
-      }
-      else {
-        setBackground(Color.white);
-        setForeground(Color.black);
-      }
-
-      return this;
-    }
-
-    private static final Color HIGHLIGHT_COLOR = new Color(64, 64, 255);
-  }
-
-  public void addTo(Container container) { container.add(panel_); }
-
-  public void setVisible(boolean visible) { panel_.setVisible(visible); }
-
-  public void
-  setSize(int width, int height)
-  {
-    panel_.setSize(width, height);
-    scrollPane_.setSize
-      (width - 1,
-       height - 1 - (dayLabel_.getLocation().y + dayLabel_.getSize().height));
-  }
-
-  public void
-  setLocation(int x, int y) { panel_.setLocation(x, y); }
-
-  public void
-  setDayText(String text) { dayLabel_.setText(text); }
-
-  public void
-  setEntries(Entry[] entries) { entries_.setListData(entries); }
-
-  public static final Color BORDER_COLOR = new Color(200, 200, 200);
-  private final JPanel panel_ = new JPanel(null);
-  private final JLabel dayLabel_ = new JLabel();
-  private final JScrollPane scrollPane_ = new JScrollPane();
-  private final JList<Entry> entries_ = new JList<>();
 }
