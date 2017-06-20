@@ -558,6 +558,8 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
   private static class DayPanel implements ListSelectionListener {
     public DayPanel(NuvlCalendarFrame parent)
     {
+      parent_ = parent;
+
       panel_.setBorder(BorderFactory.createLineBorder(BORDER_COLOR));
       panel_.setComponentPopupMenu(parent.dayPopupMenu_);
 
@@ -580,26 +582,6 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
       setChildrenInheritsPopupMenu(panel_, true);
     }
 
-    /**
-     * Recursively call setInheritsPopupMenu(value) on all children of component.
-     */
-    public static void
-    setChildrenInheritsPopupMenu(JComponent component, boolean value)
-    {
-      for (Component child : component.getComponents()) {
-        if (child instanceof JComponent) {
-          JComponent jChild = (JComponent)child;
-          ((JComponent) child).setInheritsPopupMenu(value);
-
-          setChildrenInheritsPopupMenu(jChild, value);
-        }
-      }
-    }
-
-    @Override
-    public void valueChanged(ListSelectionEvent e) {
-    }
-
     public static class Entry implements Comparable<Entry> {
       public Entry(EventTimeInterval timeInterval, String label)
       {
@@ -607,11 +589,11 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
         this.label = label;
 
         if (label.startsWith("<-> "))
-          labelRank = 1;
+          labelRank_ = 1;
         else if (label.startsWith("> "))
-          labelRank = 2;
+          labelRank_ = 2;
         else
-          labelRank = 3;
+          labelRank_ = 3;
       }
 
       // Define toString for display.
@@ -625,7 +607,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
         if (other == this)
           return 0;
 
-        int rankComparison = Integer.compare(labelRank, other.labelRank);
+        int rankComparison = Integer.compare(labelRank_, other.labelRank_);
         if (rankComparison != 0)
           return rankComparison;
 
@@ -639,7 +621,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
 
       public final EventTimeInterval timeInterval;
       public final String label;
-      private final int labelRank;
+      private final int labelRank_;
     }
 
     private static class EntryCellRenderer extends JLabel implements ListCellRenderer {
@@ -692,6 +674,43 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     public void
     setEntries(Entry[] entries) { entries_.setListData(entries); }
 
+    /**
+     * This is called when the entries_ selection changes. 
+     */
+    @Override
+    public void valueChanged(ListSelectionEvent e) {
+      if (e.getValueIsAdjusting())
+        return;
+      if (entries_.getSelectedIndex() < 0)
+        // This also prevents recursive calls.
+        return;
+
+      // Clear the selection for other DayPanel instances.
+      for (ArrayList<DayPanel> row : parent_.daysPanelGrid_) {
+        for (DayPanel day : row) {
+          if (day != this)
+            day.entries_.clearSelection();
+        }
+      }
+    }
+
+    /**
+     * Recursively call setInheritsPopupMenu(value) on all children of component.
+     */
+    private static void
+    setChildrenInheritsPopupMenu(JComponent component, boolean value)
+    {
+      for (Component child : component.getComponents()) {
+        if (child instanceof JComponent) {
+          JComponent jChild = (JComponent)child;
+          ((JComponent) child).setInheritsPopupMenu(value);
+
+          setChildrenInheritsPopupMenu(jChild, value);
+        }
+      }
+    }
+
+    private final NuvlCalendarFrame parent_;
     public static final Color BORDER_COLOR = new Color(200, 200, 200);
     private final JPanel panel_ = new JPanel(null);
     private final JLabel dayLabel_ = new JLabel();
