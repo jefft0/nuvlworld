@@ -387,12 +387,26 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     format.setTimeZone(preferences_.getTimeZone());
     String event = entry.timeInterval.event;
 
+    String text = "";
     String title = store_.descriptions_.getOrDefault(event, event);
-    // TODO: HTML escape this.
-    String text = title;
+    boolean isGrounded = groundedAttrs_.contains(event);
+    String color = isGrounded ? "black" : "red";
+    // TODO: HTML escape the title.
+    text += "<font color=\"" + color + "\">" + title + "</font>";
 
     text += "<br/>Start: " + format.format(new Date(entry.timeInterval.startUtcMillis));
     text += "<br/>End:&nbsp; " + format.format(new Date(entry.timeInterval.endUtcMillis));
+
+    String scenarioNumbers = "";
+    for (int i = 0; i < scenarios_.size(); ++i) {
+      if (scenarios_.get(i).deducedAttrs.contains(event)) {
+        if (!scenarioNumbers.equals(""))
+          scenarioNumbers += ", ";
+        scenarioNumbers += (i + 1);
+      }
+    }
+    text += "<br/>In scenario " + scenarioNumbers;
+
     eventDetailTextPane_.setText(text);
   }
 
@@ -534,6 +548,8 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     );
 
     eventsAndCalendarVerticalSplitPane_.setBottomComponent(calendarPanel_);
+
+    jScrollPane1.setBorder(null);
 
     eventDetailTextPane_.setEditable(false);
     eventDetailTextPane_.setContentType("text/html"); // NOI18N
