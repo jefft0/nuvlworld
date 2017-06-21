@@ -54,6 +54,7 @@ import org.nuvl.nuvlworld.NuvlWorldStore;
 import org.nuvl.nuvlworld.NuvlWorldStore.EventTimeInterval;
 import org.nuvl.argue.aba_plus.Sentence;
 import org.nuvl.argue.aba_plus.Rule;
+import org.nuvl.argue.aba_plus.ABA_Plus;
 import org.nuvl.argue.NuvlFramework;
 import static org.nuvl.nuvlworld.NuvlWorldStore.INT;
 import static org.nuvl.nuvlworld.NuvlWorldStore.TERM;
@@ -195,30 +196,38 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     rules.add(new Rule(new Sentence("(attr LondonWet)"), new Sentence("(attr ImperialWet)")));
     rules.add(new Rule(new Sentence("(attr LondonWet)"), new Sentence("(attr ScienceMuseumWet)")));
 
+    // Compute the framework.
     NuvlFramework framework = new NuvlFramework(assumptions, rules);
-    // Make a deep conversion from the Scala set to Java.
-    HashSet<HashSet<Sentence>> preferredExtensions = new HashSet<>();
-    for (scala.collection.Iterable<Sentence> extension : JavaConversions.asJavaCollection
-         (framework.preferredExtensions()))
-      preferredExtensions.add(new HashSet<>(JavaConversions.asJavaCollection(extension)));
-
     HashSet<Sentence> groundedExtension = new HashSet<>
       (JavaConversions.asJavaCollection(framework.groundedExtension()));
 
+    // Get all $Attr in the deductions of the grounded extension which match (attr $Attr).
+    groundedAttrs_.clear();
+    for (Sentence deduction : JavaConversions.asJavaCollection
+         (framework.aba().generate_all_deductions(framework.groundedExtension()))) {
+      if (deduction.is_contrary())
+        continue;
+
+      Matcher matcher = attrPattern_.matcher(deduction.symbol());
+      if (matcher.find())
+        groundedAttrs_.add(matcher.group(1));
+    }
+
+    // Create the scenarios.
+    scenarios_.clear();
+    for (scala.collection.immutable.Set<Sentence> extension : JavaConversions.asJavaCollection
+         (framework.preferredExtensions()))
+      scenarios_.add(new Scenario(extension, framework, groundedExtension));
+
     System.out.println("groundedExtension: " + groundedExtension);
+    System.out.println("groundedAttrs: " + groundedAttrs_);
 
     String text = "";
-    int scenarioNumber = 0;
-    for (HashSet<Sentence> extension : preferredExtensions) {
-      ++scenarioNumber;
-      HashSet<Sentence> conflict = new HashSet<>(extension);
-      conflict.removeAll(groundedExtension);
-      System.out.println("Scenario " + scenarioNumber + " preferredExtension: " + extension);
-      System.out.println("  conflict: " + conflict);
-
+    for (int i = 0; i < scenarios_.size(); ++i) {
+      int scenarioNumber = i + 1;
       text += "<a href=\"scenario" + scenarioNumber + "\">Scenario " +
         scenarioNumber + "</a><br/>";
-      text += conflict + "<br/><br/>";
+      text += scenarios_.get(i).deducedAttrs + "<br/><br/>";
     }
 
     scenariosTextPane_.setText(text);
@@ -730,7 +739,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
       private final int labelRank_;
     }
 
-    private static class EntryCellRenderer extends JLabel implements ListCellRenderer {
+    private class EntryCellRenderer extends JLabel implements ListCellRenderer {
       public EntryCellRenderer()
       {
         setOpaque(true);
@@ -743,19 +752,21 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
         Entry entry = (Entry) value;
         setText(entry.toString());
         //setIcon(entry.getIcon());
+
+        boolean isGrounded = parent_.groundedAttrs_.contains
+          (entry.timeInterval.event);
+        Color color = isGrounded ? Color.black : Color.red;
         if (isSelected) {
-          setBackground(HIGHLIGHT_COLOR);
+          setBackground(color);
           setForeground(Color.white);
         }
         else {
           setBackground(Color.white);
-          setForeground(Color.black);
+          setForeground(color);
         }
 
         return this;
       }
-
-      private static final Color HIGHLIGHT_COLOR = new Color(64, 64, 255);
     }
 
     public void addTo(Container container) { container.add(panel_); }
@@ -826,6 +837,45 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     private final JList<Entry> entries_ = new JList<>();
   }
 
+  /**
+   * A Scenario holds the scenario results based on a preferred extension.
+   */
+  private static class Scenario {
+    /**
+     * Create a new Scenario for the preferredExtension.
+     * @param preferredExtensionScala The preferred extension as a Scala set.
+     * This is converted to a Java Set and saved as preferredExtension.
+     * @param framework The NuvlFramework that the preferred extension came from.
+     * @param groundedExtension The pre-computed grounded extension which is the
+     * intersection of the preferred extensions, and converted to a Java Set.
+     */
+    public Scenario
+      (scala.collection.immutable.Set<Sentence> preferredExtensionScala,
+       NuvlFramework framework, Set<Sentence> groundedExtension) {
+      preferredExtension = new HashSet<>(JavaConversions.asJavaCollection
+        (preferredExtensionScala));
+
+      // TODO: Compute this directly from framework.groundedExtension().
+      conflictingAssumptions = new HashSet<>(preferredExtension);
+      conflictingAssumptions.removeAll(groundedExtension);
+
+      // Get all $Attr in the deductions of the extension which match (attr $Attr).
+      for (Sentence deduction : JavaConversions.asJavaCollection
+           (framework.aba().generate_all_deductions(preferredExtensionScala))) {
+        if (deduction.is_contrary())
+          continue;
+
+        Matcher matcher = attrPattern_.matcher(deduction.symbol());
+        if (matcher.find())
+          deducedAttrs.add(matcher.group(1));
+      }
+    }
+
+    public final Set<Sentence> preferredExtension;
+    public final Set<Sentence> conflictingAssumptions;
+    public final Set<String> deducedAttrs = new HashSet<>();
+  }
+
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JPanel calendarControlsPanel_;
   private javax.swing.JPanel calendarPanel_;
@@ -845,8 +895,11 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
   // End of variables declaration//GEN-END:variables
   private final NuvlWorldStore store_;
   private final NuvlWorldPreferences preferences_;
-  private final ArrayList<ArrayList<DayPanel>> daysPanelGrid_ = new ArrayList();
-  private final ArrayList<JLabel> daysPanelHeaders_ = new ArrayList();
+  private final ArrayList<ArrayList<DayPanel>> daysPanelGrid_ = new ArrayList<>();
+  private final ArrayList<JLabel> daysPanelHeaders_ = new ArrayList<>();
+  private final ArrayList<Scenario> scenarios_ = new ArrayList<>();
+  private final HashSet<String> groundedAttrs_ = new HashSet<>();
+  private int selectedScenarioNumber = 1;
   private LocalDate selectedDate_ = LocalDate.now();
   private LocalDate daysPanelPreviousDate_ = LocalDate.of(1900, 1, 1);
   private int nWeekRows_ = 0;
@@ -857,4 +910,6 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     DateTimeFormatter.ofPattern("MMMM y");
   private static final DateTimeFormatter dayOfWeekFormatter_ =
     DateTimeFormatter.ofPattern("EEEE");
+  private static Pattern attrPattern_ =
+    Pattern.compile("^\\(attr (" + TERM + ")\\)$");
 }
