@@ -26,21 +26,22 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
-import javafx.scene.control.SelectionMode;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import org.jdatepicker.impl.JDatePanelImpl;
@@ -48,6 +49,10 @@ import org.jdatepicker.impl.UtilCalendarModel;
 import org.nuvl.nuvlworld.NuvlWorldPreferences;
 import org.nuvl.nuvlworld.NuvlWorldStore;
 import org.nuvl.nuvlworld.NuvlWorldStore.EventTimeInterval;
+import org.nuvl.argue.aba_plus.Sentence;
+import org.nuvl.argue.aba_plus.Rule;
+import org.nuvl.argue.NuvlFramework;
+import scala.collection.JavaConversions;
 
 /**
  * NuvlCalendarFrame displays events on a calendar and shows conflicts using
@@ -55,7 +60,6 @@ import org.nuvl.nuvlworld.NuvlWorldStore.EventTimeInterval;
  * @author Jeff Thompson, jeff@thefirst.org
  */
 public class NuvlCalendarFrame extends javax.swing.JFrame {
-
   /**
    * Create a new NuvlCalendarFrame to use the given store and preferences.
    */
@@ -67,6 +71,17 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     store_ = store;
 
     initComponents();
+    scenariosTextPane_.addHyperlinkListener
+      (new HyperlinkListener(){
+      @Override
+      public void hyperlinkUpdate(HyperlinkEvent e) {
+        if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+          if (e.getDescription().startsWith("scenario"))
+            selectScenario(Integer.parseInt
+              (e.getDescription().substring("scenario".length())));
+        }
+      }
+    });
 
     // Initialize the day panel grid. A month has up to six rows of weeks.
     for (int iWeek = 0; iWeek < 6; ++iWeek) {
@@ -108,7 +123,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     p.put("text.year", "Year");
     datePanel_ = new JDatePanelImpl(model, p);
     datePanel_.setLocation(0, 0);
-    datePanel_.setSize(190, 170);
+    datePanel_.setSize(190, 175);
     // This is a hack to change the month label background from the unreadable dark blue.
     ((Container)datePanel_.getComponents()[0]).getComponents()[0].setBackground
       (new Color(200, 200, 255));
@@ -130,9 +145,65 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
       }
     });
 
+    setUpScenarios();
     setUpDaysPanel();
 
     pack();
+  }
+
+  /**
+   * Compute conflicts and set up scenariosTextPane_.
+   */
+  private void setUpScenarios()
+  {
+    Sentence londonRainingLastNight = new Sentence("(task LondonRainingLastNight)");
+    Sentence imperialSprinklerLastNight = new Sentence("(task ImperialSprinklerLastNight)");
+    Sentence scienceMuseumDryThisMorning = new Sentence("(task ScienceMuseumDryThisMorning)");
+    HashSet<Sentence> assumptions = new HashSet<>();
+    assumptions.add(londonRainingLastNight);
+    assumptions.add(imperialSprinklerLastNight);
+    assumptions.add(scienceMuseumDryThisMorning);
+
+    HashSet<Rule> rules = new HashSet<>();
+    rules.add(new Rule(londonRainingLastNight, new Sentence("(attr LondonRainingLastNight)")));
+    rules.add(new Rule(londonRainingLastNight, new Sentence("(attr LondonlWetThisMorning)")));
+    rules.add(new Rule(new Sentence("(attr LondonlWetThisMorning)"), new Sentence("(attr ImperialWetThisMorning)")));
+    rules.add(new Rule(new Sentence("(attr LondonlWetThisMorning)"), new Sentence("(attr ScienceMuseumWetThisMorning)")));
+    rules.add(new Rule(imperialSprinklerLastNight, new Sentence("(attr ImperialSprinklerLastNight)")));
+    rules.add(new Rule(imperialSprinklerLastNight, new Sentence("(attr ImperialWetThisMorning)")));
+    rules.add(new Rule(scienceMuseumDryThisMorning, new Sentence("(attr ScienceMuseumDryThisMorning)")));
+
+    rules.add(new Rule(new Sentence("(attr ScienceMuseumDryThisMorning)"),
+                       new Sentence("(attr ScienceMuseumWetThisMorning)", true)));
+
+    NuvlFramework framework = new NuvlFramework(assumptions, rules);
+    // Make a deep conversion from the Scala set to Java.
+    HashSet<HashSet<Sentence>> preferredExtensions = new HashSet<>();
+    for (scala.collection.Iterable<Sentence> extension : JavaConversions.asJavaCollection
+         (framework.preferredExtensions()))
+      preferredExtensions.add(new HashSet<>(JavaConversions.asJavaCollection(extension)));
+
+    HashSet<Sentence> groundedExtension = new HashSet<>
+      (JavaConversions.asJavaCollection(framework.groundedExtension()));
+
+    System.out.println("groundedExtension: " + groundedExtension);
+
+    String text = "<html><body>";
+    int scenarioNumber = 0;
+    for (HashSet<Sentence> extension : preferredExtensions) {
+      ++scenarioNumber;
+      HashSet<Sentence> conflict = new HashSet<>(extension);
+      conflict.removeAll(groundedExtension);
+      System.out.println("Scenario " + scenarioNumber + " preferredExtension: " + extension);
+      System.out.println("  conflict: " + conflict);
+
+      text += "<a href=\"scenario" + scenarioNumber + "\">Scenario " +
+        scenarioNumber + "</a><br/>";
+      text += conflict + "<br/><br/>";
+    }
+
+    text += "</body></html>";
+    scenariosTextPane_.setText(text);
   }
 
   /**
@@ -276,6 +347,10 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     daysPanel_ComponentResized(null);
   }
 
+  private void selectScenario(int scenarioNumber)
+  {
+  }
+
   /**
    * This method is called from within the constructor to initialize the form.
    * WARNING: Do NOT modify this code. The content of this method is always
@@ -283,13 +358,14 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
    */
   @SuppressWarnings("unchecked")
   // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
-  private void initComponents()
-  {
+  private void initComponents() {
 
     dayPopupMenu_ = new javax.swing.JPopupMenu();
     newEventMenuItem_ = new javax.swing.JMenuItem();
     topHorizontalSplitPane_ = new javax.swing.JSplitPane();
     calendarControlsPanel_ = new javax.swing.JPanel();
+    jScrollPane2 = new javax.swing.JScrollPane();
+    scenariosTextPane_ = new javax.swing.JTextPane();
     eventsAndCalendarVerticalSplitPane_ = new javax.swing.JSplitPane();
     calendarPanel_ = new javax.swing.JPanel();
     daysPanel_ = new javax.swing.JPanel();
@@ -301,10 +377,8 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     eventsList_ = new javax.swing.JList<>();
 
     newEventMenuItem_.setText("New Event...");
-    newEventMenuItem_.addActionListener(new java.awt.event.ActionListener()
-    {
-      public void actionPerformed(java.awt.event.ActionEvent evt)
-      {
+    newEventMenuItem_.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
         newEventMenuItem_ActionPerformed(evt);
       }
     });
@@ -315,15 +389,22 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
 
     topHorizontalSplitPane_.setDividerLocation(190);
 
+    scenariosTextPane_.setEditable(false);
+    scenariosTextPane_.setContentType("text/html"); // NOI18N
+    jScrollPane2.setViewportView(scenariosTextPane_);
+
     javax.swing.GroupLayout calendarControlsPanel_Layout = new javax.swing.GroupLayout(calendarControlsPanel_);
     calendarControlsPanel_.setLayout(calendarControlsPanel_Layout);
     calendarControlsPanel_Layout.setHorizontalGroup(
       calendarControlsPanel_Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-      .addGap(0, 189, Short.MAX_VALUE)
+      .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 188, Short.MAX_VALUE)
     );
     calendarControlsPanel_Layout.setVerticalGroup(
       calendarControlsPanel_Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-      .addGap(0, 689, Short.MAX_VALUE)
+      .addGroup(calendarControlsPanel_Layout.createSequentialGroup()
+        .addGap(180, 180, 180)
+        .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 542, Short.MAX_VALUE)
+        .addGap(1, 1, 1))
     );
 
     topHorizontalSplitPane_.setLeftComponent(calendarControlsPanel_);
@@ -331,18 +412,14 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     eventsAndCalendarVerticalSplitPane_.setDividerLocation(100);
     eventsAndCalendarVerticalSplitPane_.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
 
-    calendarPanel_.addComponentListener(new java.awt.event.ComponentAdapter()
-    {
-      public void componentResized(java.awt.event.ComponentEvent evt)
-      {
+    calendarPanel_.addComponentListener(new java.awt.event.ComponentAdapter() {
+      public void componentResized(java.awt.event.ComponentEvent evt) {
         calendarPanel_ComponentResized(evt);
       }
     });
 
-    daysPanel_.addComponentListener(new java.awt.event.ComponentAdapter()
-    {
-      public void componentResized(java.awt.event.ComponentEvent evt)
-      {
+    daysPanel_.addComponentListener(new java.awt.event.ComponentAdapter() {
+      public void componentResized(java.awt.event.ComponentEvent evt) {
         daysPanel_ComponentResized(evt);
       }
     });
@@ -359,28 +436,22 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     );
 
     decrementButton_.setText("<");
-    decrementButton_.addActionListener(new java.awt.event.ActionListener()
-    {
-      public void actionPerformed(java.awt.event.ActionEvent evt)
-      {
+    decrementButton_.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
         decrementButton_ActionPerformed(evt);
       }
     });
 
     todayButton_.setText("Today");
-    todayButton_.addActionListener(new java.awt.event.ActionListener()
-    {
-      public void actionPerformed(java.awt.event.ActionEvent evt)
-      {
+    todayButton_.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
         todayButton_ActionPerformed(evt);
       }
     });
 
     incrementButton_.setText(">");
-    incrementButton_.addActionListener(new java.awt.event.ActionListener()
-    {
-      public void actionPerformed(java.awt.event.ActionEvent evt)
-      {
+    incrementButton_.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
         incrementButton_ActionPerformed(evt);
       }
     });
@@ -402,7 +473,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
         .addComponent(incrementButton_)
         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
         .addComponent(daysPanelLabel_)
-        .addContainerGap(714, Short.MAX_VALUE))
+        .addContainerGap(715, Short.MAX_VALUE))
     );
     calendarPanel_Layout.setVerticalGroup(
       calendarPanel_Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -729,7 +800,9 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
   private javax.swing.JList<String> eventsList_;
   private javax.swing.JScrollPane eventsScrollPane_;
   private javax.swing.JButton incrementButton_;
+  private javax.swing.JScrollPane jScrollPane2;
   private javax.swing.JMenuItem newEventMenuItem_;
+  private javax.swing.JTextPane scenariosTextPane_;
   private javax.swing.JButton todayButton_;
   private javax.swing.JSplitPane topHorizontalSplitPane_;
   // End of variables declaration//GEN-END:variables
