@@ -187,7 +187,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
 
     System.out.println("groundedExtension: " + groundedExtension);
 
-    String text = "<html><body>";
+    String text = "";
     int scenarioNumber = 0;
     for (HashSet<Sentence> extension : preferredExtensions) {
       ++scenarioNumber;
@@ -201,7 +201,6 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
       text += conflict + "<br/><br/>";
     }
 
-    text += "</body></html>";
     scenariosTextPane_.setText(text);
   }
 
@@ -360,10 +359,11 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     String event = entry.timeInterval.event;
 
     String title = store_.descriptions_.getOrDefault(event, event);
+    // TODO: HTML escape this.
     String text = title;
 
-    text += "\nStart: " + format.format(new Date(entry.timeInterval.startUtcMillis));
-    text += "\nEnd:  " + format.format(new Date(entry.timeInterval.endUtcMillis));
+    text += "<br/>Start: " + format.format(new Date(entry.timeInterval.startUtcMillis));
+    text += "<br/>End:&nbsp; " + format.format(new Date(entry.timeInterval.endUtcMillis));
     eventDetailTextPane_.setText(text);
   }
 
@@ -507,7 +507,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     eventsAndCalendarVerticalSplitPane_.setBottomComponent(calendarPanel_);
 
     eventDetailTextPane_.setEditable(false);
-    eventDetailTextPane_.setText("");
+    eventDetailTextPane_.setContentType("text/html"); // NOI18N
     jScrollPane1.setViewportView(eventDetailTextPane_);
 
     eventsAndCalendarVerticalSplitPane_.setLeftComponent(jScrollPane1);
