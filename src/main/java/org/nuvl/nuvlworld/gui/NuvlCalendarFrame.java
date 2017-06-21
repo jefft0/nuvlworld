@@ -21,17 +21,18 @@ import java.awt.Container;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
 import javax.swing.BorderFactory;
-import javax.swing.DefaultListModel;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -107,8 +108,6 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
       daysPanel_.getParent().add(header);
     }
 
-    eventsList_.setModel(eventsListModel_);
-
     // Set up the datePanel_.
     Calendar calendar = Calendar.getInstance(preferences_.getTimeZone());
     calendar.clear();
@@ -156,25 +155,25 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
    */
   private void setUpScenarios()
   {
-    Sentence londonRainingLastNight = new Sentence("(task LondonRainingLastNight)");
-    Sentence imperialSprinklerLastNight = new Sentence("(task ImperialSprinklerLastNight)");
-    Sentence scienceMuseumDryThisMorning = new Sentence("(task ScienceMuseumDryThisMorning)");
+    Sentence londonRaining = new Sentence("(task LondonRaining)");
+    Sentence imperialSprinkler = new Sentence("(task ImperialSprinkler)");
+    Sentence scienceMuseumDry = new Sentence("(task ScienceMuseumDry)");
     HashSet<Sentence> assumptions = new HashSet<>();
-    assumptions.add(londonRainingLastNight);
-    assumptions.add(imperialSprinklerLastNight);
-    assumptions.add(scienceMuseumDryThisMorning);
+    assumptions.add(londonRaining);
+    assumptions.add(imperialSprinkler);
+    assumptions.add(scienceMuseumDry);
 
     HashSet<Rule> rules = new HashSet<>();
-    rules.add(new Rule(londonRainingLastNight, new Sentence("(attr LondonRainingLastNight)")));
-    rules.add(new Rule(londonRainingLastNight, new Sentence("(attr LondonlWetThisMorning)")));
-    rules.add(new Rule(new Sentence("(attr LondonlWetThisMorning)"), new Sentence("(attr ImperialWetThisMorning)")));
-    rules.add(new Rule(new Sentence("(attr LondonlWetThisMorning)"), new Sentence("(attr ScienceMuseumWetThisMorning)")));
-    rules.add(new Rule(imperialSprinklerLastNight, new Sentence("(attr ImperialSprinklerLastNight)")));
-    rules.add(new Rule(imperialSprinklerLastNight, new Sentence("(attr ImperialWetThisMorning)")));
-    rules.add(new Rule(scienceMuseumDryThisMorning, new Sentence("(attr ScienceMuseumDryThisMorning)")));
+    rules.add(new Rule(londonRaining, new Sentence("(attr LondonRaining)")));
+    rules.add(new Rule(londonRaining, new Sentence("(attr LondonlWet)")));
+    rules.add(new Rule(new Sentence("(attr LondonlWet)"), new Sentence("(attr ImperialWet)")));
+    rules.add(new Rule(new Sentence("(attr LondonlWet)"), new Sentence("(attr ScienceMuseumWet)")));
+    rules.add(new Rule(imperialSprinkler, new Sentence("(attr ImperialSprinkler)")));
+    rules.add(new Rule(imperialSprinkler, new Sentence("(attr ImperialWet)")));
+    rules.add(new Rule(scienceMuseumDry, new Sentence("(attr ScienceMuseumDry)")));
 
-    rules.add(new Rule(new Sentence("(attr ScienceMuseumDryThisMorning)"),
-                       new Sentence("(attr ScienceMuseumWetThisMorning)", true)));
+    rules.add(new Rule(new Sentence("(attr ScienceMuseumDry)"),
+                       new Sentence("(attr ScienceMuseumWet)", true)));
 
     NuvlFramework framework = new NuvlFramework(assumptions, rules);
     // Make a deep conversion from the Scala set to Java.
@@ -284,7 +283,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
             // TODO: Check that event is a event in the argument set.
             String event = timeInterval.event;
 
-            String title = store_.descriptions_.getOrDefault(event, "untitled");
+            String title = store_.descriptions_.getOrDefault(event, event);
 
             calendar.clear();
             calendar.setTimeInMillis(timeInterval.startUtcMillis);
@@ -352,6 +351,23 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
   }
 
   /**
+   * Set up the eventDetailTextPane_ for the selected event entry.
+   */
+  private void setUpEventDetail(DayPanel.Entry entry)
+  {
+    SimpleDateFormat format = new SimpleDateFormat("EEEE, yyyy-MM-dd hh:mm:ss");
+    format.setTimeZone(preferences_.getTimeZone());
+    String event = entry.timeInterval.event;
+
+    String title = store_.descriptions_.getOrDefault(event, event);
+    String text = title;
+
+    text += "\nStart: " + format.format(new Date(entry.timeInterval.startUtcMillis));
+    text += "\nEnd:  " + format.format(new Date(entry.timeInterval.endUtcMillis));
+    eventDetailTextPane_.setText(text);
+  }
+
+  /**
    * This method is called from within the constructor to initialize the form.
    * WARNING: Do NOT modify this code. The content of this method is always
    * regenerated by the Form Editor.
@@ -373,8 +389,8 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     todayButton_ = new javax.swing.JButton();
     incrementButton_ = new javax.swing.JButton();
     daysPanelLabel_ = new javax.swing.JLabel();
-    eventsScrollPane_ = new javax.swing.JScrollPane();
-    eventsList_ = new javax.swing.JList<>();
+    jScrollPane1 = new javax.swing.JScrollPane();
+    eventDetailTextPane_ = new javax.swing.JTextPane();
 
     newEventMenuItem_.setText("New Event...");
     newEventMenuItem_.addActionListener(new java.awt.event.ActionListener() {
@@ -409,7 +425,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
 
     topHorizontalSplitPane_.setLeftComponent(calendarControlsPanel_);
 
-    eventsAndCalendarVerticalSplitPane_.setDividerLocation(100);
+    eventsAndCalendarVerticalSplitPane_.setDividerLocation(140);
     eventsAndCalendarVerticalSplitPane_.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
 
     calendarPanel_.addComponentListener(new java.awt.event.ComponentAdapter() {
@@ -490,12 +506,11 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
 
     eventsAndCalendarVerticalSplitPane_.setBottomComponent(calendarPanel_);
 
-    eventsScrollPane_.setBorder(null);
+    eventDetailTextPane_.setEditable(false);
+    eventDetailTextPane_.setText("");
+    jScrollPane1.setViewportView(eventDetailTextPane_);
 
-    eventsList_.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-    eventsScrollPane_.setViewportView(eventsList_);
-
-    eventsAndCalendarVerticalSplitPane_.setLeftComponent(eventsScrollPane_);
+    eventsAndCalendarVerticalSplitPane_.setLeftComponent(jScrollPane1);
 
     topHorizontalSplitPane_.setRightComponent(eventsAndCalendarVerticalSplitPane_);
 
@@ -763,6 +778,8 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
             day.entries_.clearSelection();
         }
       }
+
+      parent_.setUpEventDetail(entries_.getSelectedValue());
     }
 
     /**
@@ -796,10 +813,10 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
   private javax.swing.JLabel daysPanelLabel_;
   private javax.swing.JPanel daysPanel_;
   private javax.swing.JButton decrementButton_;
+  private javax.swing.JTextPane eventDetailTextPane_;
   private javax.swing.JSplitPane eventsAndCalendarVerticalSplitPane_;
-  private javax.swing.JList<String> eventsList_;
-  private javax.swing.JScrollPane eventsScrollPane_;
   private javax.swing.JButton incrementButton_;
+  private javax.swing.JScrollPane jScrollPane1;
   private javax.swing.JScrollPane jScrollPane2;
   private javax.swing.JMenuItem newEventMenuItem_;
   private javax.swing.JTextPane scenariosTextPane_;
@@ -808,7 +825,6 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
   // End of variables declaration//GEN-END:variables
   private final NuvlWorldStore store_;
   private final NuvlWorldPreferences preferences_;
-  private final DefaultListModel<String> eventsListModel_ = new DefaultListModel<>();
   private final ArrayList<ArrayList<DayPanel>> daysPanelGrid_ = new ArrayList();
   private final ArrayList<JLabel> daysPanelHeaders_ = new ArrayList();
   private LocalDate selectedDate_ = LocalDate.now();
