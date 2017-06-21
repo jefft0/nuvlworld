@@ -32,6 +32,8 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -53,6 +55,8 @@ import org.nuvl.nuvlworld.NuvlWorldStore.EventTimeInterval;
 import org.nuvl.argue.aba_plus.Sentence;
 import org.nuvl.argue.aba_plus.Rule;
 import org.nuvl.argue.NuvlFramework;
+import static org.nuvl.nuvlworld.NuvlWorldStore.INT;
+import static org.nuvl.nuvlworld.NuvlWorldStore.TERM;
 import scala.collection.JavaConversions;
 
 /**
@@ -155,25 +159,41 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
    */
   private void setUpScenarios()
   {
-    Sentence londonRaining = new Sentence("(task LondonRaining)");
-    Sentence imperialSprinkler = new Sentence("(task ImperialSprinkler)");
-    Sentence scienceMuseumDry = new Sentence("(task ScienceMuseumDry)");
     HashSet<Sentence> assumptions = new HashSet<>();
-    assumptions.add(londonRaining);
-    assumptions.add(imperialSprinkler);
-    assumptions.add(scienceMuseumDry);
-
     HashSet<Rule> rules = new HashSet<>();
-    rules.add(new Rule(londonRaining, new Sentence("(attr LondonRaining)")));
-    rules.add(new Rule(londonRaining, new Sentence("(attr LondonlWet)")));
-    rules.add(new Rule(new Sentence("(attr LondonlWet)"), new Sentence("(attr ImperialWet)")));
-    rules.add(new Rule(new Sentence("(attr LondonlWet)"), new Sentence("(attr ScienceMuseumWet)")));
-    rules.add(new Rule(imperialSprinkler, new Sentence("(attr ImperialSprinkler)")));
-    rules.add(new Rule(imperialSprinkler, new Sentence("(attr ImperialWet)")));
-    rules.add(new Rule(scienceMuseumDry, new Sentence("(attr ScienceMuseumDry)")));
 
-    rules.add(new Rule(new Sentence("(attr ScienceMuseumDry)"),
-                       new Sentence("(attr ScienceMuseumWet)", true)));
+    // Add rules for (implies (task $InAttr) (attr $OutAttr)).
+    // Also add each task as an assumption.
+    Pattern rulePattern = Pattern.compile
+      ("^\\(implies \\(task (" + TERM + ")\\) \\(attr (" + TERM + ")\\)\\)$");
+    for (Sentence sentence : store_.sentencesByPredicate_.getOrDefault
+         ("implies", new HashSet<>())) {
+      Matcher matcher = rulePattern.matcher(sentence.symbol());
+      if (matcher.find()) {
+        Sentence task = new Sentence("(task " + matcher.group(1) + ")");
+        Sentence inAttr =  new Sentence("(attr " + matcher.group(1) + ")");
+        Sentence outAttr = new Sentence("(attr " + matcher.group(2) + ")");
+
+        rules.add(new Rule(task, inAttr));
+        rules.add(new Rule(task, outAttr));
+        assumptions.add(task);
+      }
+    }
+
+    // Add disjoint attributes.
+    Pattern disjointPattern = Pattern.compile
+      ("^\\(disjointAttrs (" + TERM + ") (" + TERM + ")\\)$");
+    for (Sentence sentence : store_.sentencesByPredicate_.getOrDefault
+         ("disjointAttrs", new HashSet<>())) {
+      Matcher matcher = disjointPattern.matcher(sentence.symbol());
+      if (matcher.find())
+        rules.add(new Rule(new Sentence("(attr " + matcher.group(1) + ")"),
+                           new Sentence("(attr " + matcher.group(2) + ")", true)));
+    }
+
+    // TODO: Derive these from loaded location data.
+    rules.add(new Rule(new Sentence("(attr LondonWet)"), new Sentence("(attr ImperialWet)")));
+    rules.add(new Rule(new Sentence("(attr LondonWet)"), new Sentence("(attr ScienceMuseumWet)")));
 
     NuvlFramework framework = new NuvlFramework(assumptions, rules);
     // Make a deep conversion from the Scala set to Java.
@@ -354,7 +374,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
    */
   private void setUpEventDetail(DayPanel.Entry entry)
   {
-    SimpleDateFormat format = new SimpleDateFormat("EEEE, yyyy-MM-dd hh:mm:ss");
+    SimpleDateFormat format = new SimpleDateFormat("EEEE, yyyy-MM-dd HH:mm:ss");
     format.setTimeZone(preferences_.getTimeZone());
     String event = entry.timeInterval.event;
 
