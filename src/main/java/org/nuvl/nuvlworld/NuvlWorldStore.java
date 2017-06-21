@@ -338,16 +338,16 @@ public class NuvlWorldStore {
   public final Map<String, String> descriptions_ = new HashMap<>();
   public static final String TERM = "[a-zA-Z_]\\w*";
   public static final String INT = "-?\\d+";
-  public static final String UNARY_FN =
-    "\\(" + TERM + "Fn (?:" + TERM + "|" + INT + ")\\)";
-  public static final String BINARY_FN =
-    "\\(" + TERM + "Fn (?:" + TERM + "|" + INT + ") (?:" + TERM + "|" + INT + ")\\)";
+  public static final String UNARY =
+    "\\(" + TERM + " (?:" + TERM + "|" + INT + ")\\)";
+  public static final String BINARY =
+    "\\(" + TERM + " (?:" + TERM + "|" + INT + ") (?:" + TERM + "|" + INT + ")\\)";
   public static final Pattern termPattern_ = Pattern.compile
-    ("^\\((" + TERM + ") (" + TERM + ") " +
-     "(" + TERM + "|" + UNARY_FN + "|" + BINARY_FN + ")\\)$");
+    ("^\\((" + TERM + ") (" + TERM + "|" + UNARY + "|" + BINARY + ") " +
+     "(" + TERM + "|" + UNARY + "|" + BINARY + ")\\)$");
   public static final Pattern termPattern4_ = Pattern.compile
     ("^\\((" + TERM + ") (" + TERM + ") (" + TERM + ") " +
-     "(" + TERM + "|" + UNARY_FN + "|" + BINARY_FN + ")\\)$");
+     "(" + TERM + "|" + UNARY + "|" + BINARY + ")\\)$");
   public static final Pattern integerPattern_ = Pattern.compile
     ("^\\((" + TERM + ") (" + TERM + ") (" + INT + ")\\)$");
   public static final Pattern stringPattern_ = Pattern.compile
