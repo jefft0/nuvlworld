@@ -156,7 +156,8 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
   }
 
   /**
-   * Compute conflicts and set up scenariosTextPane_.
+   * Compute conflicts and set up scenariosTextPane_. Reset
+   * selectedScenarioNumber_ to 1.
    */
   private void setUpScenarios()
   {
@@ -218,16 +219,35 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     for (scala.collection.immutable.Set<Sentence> extension : JavaConversions.asJavaCollection
          (framework.preferredExtensions()))
       scenarios_.add(new Scenario(extension, framework, groundedExtension));
+    selectedScenarioNumber_ = 1;
 
     System.out.println("groundedExtension: " + groundedExtension);
     System.out.println("groundedAttrs: " + groundedAttrs_);
 
+    refreshScenariosTextPane();
+  }
+
+  /**
+   * Refresh the scenariosTextPane_ based on scenarios_ and
+   * selectedScenarioNumber_ .
+   */
+  private void
+  refreshScenariosTextPane()
+  {
     String text = "";
     for (int i = 0; i < scenarios_.size(); ++i) {
       int scenarioNumber = i + 1;
-      text += "<a href=\"scenario" + scenarioNumber + "\">Scenario " +
-        scenarioNumber + "</a><br/>";
-      text += scenarios_.get(i).deducedAttrs + "<br/><br/>";
+      text += "<a href=\"scenario" + scenarioNumber + "\">";
+      if (scenarioNumber == selectedScenarioNumber_)
+        // Make the selected scenario number bold.
+        text += "<b>";
+      text += "Scenario " + scenarioNumber;
+      if (scenarioNumber == selectedScenarioNumber_)
+        text += "</b>";
+      text += "</a>";
+
+      text += "<br/>" + scenarios_.get(i).deducedAttrs;
+      text += "<br/><br/>";
     }
 
     scenariosTextPane_.setText(text);
@@ -237,12 +257,15 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
    * Set up the dayPanelGrid_ based on selectedDate_.
    */
   private void
-  setUpDaysPanel()
+  setUpDaysPanel() { setUpDaysPanel(false); }
+
+  private void
+  setUpDaysPanel(boolean debugForce)
   {
     boolean monthChanged = !(daysPanelPreviousDate_.getYear() == selectedDate_.getYear() &&
         daysPanelPreviousDate_.getMonthValue() == selectedDate_.getMonthValue());
     daysPanelPreviousDate_ = selectedDate_;
-    if (!monthChanged)
+    if (!monthChanged && !debugForce)
       return;
 
     daysPanelLabel_.setText(selectedDate_.format(monthAndYearFormatter_));
@@ -376,6 +399,17 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
 
   private void selectScenario(int scenarioNumber)
   {
+    if (selectedScenarioNumber_ == scenarioNumber)
+      return;
+
+    selectedScenarioNumber_ = scenarioNumber;
+    // Make the selected scenario bold.
+    refreshScenariosTextPane();
+    // Change the colors of the events.
+    // TODO: Make it only redraw the days. Don't use debugForce.
+    setUpDaysPanel(true);
+    // TODO: update eventDetailTextPane_
+    eventDetailTextPane_.setText("");
   }
 
   /**
@@ -389,8 +423,14 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
 
     String text = "";
     String title = store_.descriptions_.getOrDefault(event, event);
-    boolean isGrounded = groundedAttrs_.contains(event);
-    String color = isGrounded ? "black" : "red";
+    EventStatus status = getEventStatus(event);
+    String color;
+    if (status == EventStatus.GROUNDED)
+      color = "black";
+    else if (status == EventStatus.SELECTED)
+      color = "red";
+    else
+      color = "gray";
     // TODO: HTML escape the title.
     text += "<font color=\"" + color + "\">" + title + "</font>";
 
@@ -408,6 +448,18 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     text += "<br/>In scenario " + scenarioNumbers;
 
     eventDetailTextPane_.setText(text);
+  }
+
+  private EventStatus
+  getEventStatus(String event)
+  {
+    if (groundedAttrs_.contains(event))
+      return EventStatus.GROUNDED;
+    else if (scenarios_.get(selectedScenarioNumber_ - 1).deducedAttrs.contains
+             (event))
+      return EventStatus.SELECTED;
+    else
+      return EventStatus.UNSELECTED;
   }
 
   /**
@@ -683,6 +735,8 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
     });
   }
 
+  public enum EventStatus { GROUNDED, SELECTED, UNSELECTED };
+
   /**
    * A DayPanel holds the main panel for a day plus its contained components.
    */
@@ -769,9 +823,14 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
         setText(entry.toString());
         //setIcon(entry.getIcon());
 
-        boolean isGrounded = parent_.groundedAttrs_.contains
-          (entry.timeInterval.event);
-        Color color = isGrounded ? Color.black : Color.red;
+        EventStatus status = parent_.getEventStatus(entry.timeInterval.event);
+        Color color;
+        if (status == EventStatus.GROUNDED)
+          color = Color.black;
+        else if (status == EventStatus.SELECTED)
+          color = Color.red;
+        else
+          color = Color.gray;
         if (isSelected) {
           setBackground(color);
           setForeground(Color.white);
@@ -915,7 +974,7 @@ public class NuvlCalendarFrame extends javax.swing.JFrame {
   private final ArrayList<JLabel> daysPanelHeaders_ = new ArrayList<>();
   private final ArrayList<Scenario> scenarios_ = new ArrayList<>();
   private final HashSet<String> groundedAttrs_ = new HashSet<>();
-  private int selectedScenarioNumber = 1;
+  private int selectedScenarioNumber_ = 1;
   private LocalDate selectedDate_ = LocalDate.now();
   private LocalDate daysPanelPreviousDate_ = LocalDate.of(1900, 1, 1);
   private int nWeekRows_ = 0;
