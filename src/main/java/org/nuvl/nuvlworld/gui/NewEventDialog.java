@@ -326,8 +326,9 @@ public class NewEventDialog extends javax.swing.JDialog {
     System.out.println("(instanceOf " + eventId + " " + eventClass + ")");
     System.out.println
       ("(description " + eventId + " " + NuvlWorldStore.toEscapedString(titleText_.getText()) + ")");
-    System.out.println("(startTime " + eventId + " " + startMillis + ")");
-    System.out.println("(endTime " + eventId + " " + endMillis + ")");
+    System.out.println
+      ("(subAttrOf " + eventId + " (TimeIntervalFn " + startMillis + " " +
+       endMillis + "))");
     System.out.println("(participant " + eventId + " " + preferences_.getUsername() + ")");
     System.out.println
       ("(startPoint " + eventId + " " + fromAirportId[0] + ")");
